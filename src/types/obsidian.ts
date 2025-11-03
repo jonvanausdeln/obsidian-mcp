@@ -281,3 +281,59 @@ export interface AppendToDailyResult {
   newLength: number;
   source: 'api' | 'filesystem';
 }
+
+/**
+ * Frontmatter tool parameters and results (Session 5)
+ */
+export interface UpdateFrontmatterParams {
+  path: string;
+  updates: Record<string, unknown>; // Fields to add or update
+  remove?: string[]; // Fields to remove
+  merge?: boolean; // Merge with existing (default: true)
+}
+
+export interface UpdateFrontmatterResult {
+  success: boolean;
+  path: string;
+  frontmatter: FrontmatterData;
+  updated: string[]; // Fields that were updated
+  removed: string[]; // Fields that were removed
+}
+
+/**
+ * Tag tool parameters and results (Session 5)
+ */
+export interface GetTagsParams {
+  path?: string; // Specific file or folder to analyze (default: entire vault)
+  recursive?: boolean; // Include subdirectories (default: true)
+  includeCount?: boolean; // Include usage count for each tag (default: true)
+}
+
+export interface TagInfo {
+  tag: string;
+  count: number;
+  files: string[]; // Files containing this tag
+}
+
+export interface GetTagsResult {
+  tags: TagInfo[];
+  totalTags: number;
+  totalFiles: number;
+}
+
+/**
+ * Template tool parameters and results (Session 5)
+ */
+export interface ApplyTemplateParams {
+  path: string; // Target file path
+  templatePath: string; // Path to template file
+  variables?: Record<string, string>; // Variables to substitute (e.g., {{title}} -> "My Note")
+  position?: 'replace' | 'prepend' | 'append'; // Where to insert template (default: replace)
+}
+
+export interface ApplyTemplateResult {
+  success: boolean;
+  path: string;
+  templateUsed: string;
+  variablesApplied: string[];
+}

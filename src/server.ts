@@ -13,6 +13,9 @@ import { ListNotesTool } from './tools/listNotes.js';
 import { SearchNotesTool } from './tools/searchNotes.js';
 import { GetDailyNoteTool } from './tools/getDailyNote.js';
 import { AppendToDailyTool } from './tools/appendToDaily.js';
+import { UpdateFrontmatterTool } from './tools/updateFrontmatter.js';
+import { GetTagsTool } from './tools/getTags.js';
+import { ApplyTemplateTool } from './tools/applyTemplate.js';
 import { formatError } from './obsidian/errorHandler.js';
 import type { ObsidianError } from './types/obsidian.js';
 import type { BaseTool } from './tools/base.js';
@@ -86,6 +89,9 @@ async function main() {
     new SearchNotesTool(client, logger),
     new GetDailyNoteTool(client, logger),
     new AppendToDailyTool(client, logger),
+    new UpdateFrontmatterTool(client, logger),
+    new GetTagsTool(client, logger),
+    new ApplyTemplateTool(client, logger),
   ];
 
   logger.info(`Registered ${tools.length} tools`, {
