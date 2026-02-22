@@ -68,6 +68,7 @@ describe('config', () => {
     });
 
     it('should throw error if OBSIDIAN_VAULT_PATH is missing', () => {
+      delete process.env.OBSIDIAN_VAULT_PATH;
       expect(() => getConfig()).toThrow('Configuration validation failed');
     });
 

@@ -306,7 +306,7 @@ export class FileSystemClient {
     const normalizedVault = normalize(this.config.vaultPath);
     const normalizedPath = normalize(absolutePath);
 
-    if (!normalizedPath.startsWith(normalizedVault)) {
+    if (normalizedPath !== normalizedVault && !normalizedPath.startsWith(normalizedVault + sep)) {
       throw createError(
         ObsidianErrorType.INVALID_PATH,
         'Path is outside vault boundary',

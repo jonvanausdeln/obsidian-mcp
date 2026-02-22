@@ -241,7 +241,9 @@ export class ObsidianClient {
 
     // Create file if missing and requested
     if (!dailyNoteInfo.exists && createIfMissing) {
-      const dateObj = new Date(date);
+      // Parse date parts directly from ISO string to avoid timezone shift
+      const parts = date.split('-').map(Number);
+      const dateObj = new Date(parts[0]!, parts[1]! - 1, parts[2]!); // Local timezone
       const formattedDate = dateObj.toLocaleDateString('en-US', {
         weekday: 'long',
         year: 'numeric',

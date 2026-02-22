@@ -185,8 +185,8 @@ export class GetTagsTool extends BaseTool<GetTagsInput, GetTagsResult> {
         const tag = match[1];
         if (!tag) continue; // Skip if no capture group
 
-        // Skip if it looks like a number (e.g., #123) unless it contains letters
-        if (/\d+$/.test(tag)) {
+        // Skip if it's a pure number (e.g., #123)
+        if (/^\d+$/.test(tag)) {
           continue;
         }
         tags.add(tag);
