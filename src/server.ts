@@ -16,6 +16,8 @@ import { AppendToDailyTool } from './tools/appendToDaily.js';
 import { UpdateFrontmatterTool } from './tools/updateFrontmatter.js';
 import { GetTagsTool } from './tools/getTags.js';
 import { ApplyTemplateTool } from './tools/applyTemplate.js';
+import { DeleteNoteTool } from './tools/deleteNote.js';
+import { GetActiveFileTool } from './tools/getActiveFile.js';
 import { formatError } from './obsidian/errorHandler.js';
 import type { ObsidianError } from './types/obsidian.js';
 import type { BaseTool } from './tools/base.js';
@@ -92,6 +94,8 @@ async function main() {
     new UpdateFrontmatterTool(client, logger),
     new GetTagsTool(client, logger),
     new ApplyTemplateTool(client, logger),
+    new DeleteNoteTool(client, logger),
+    new GetActiveFileTool(client, logger),
   ];
 
   logger.info(`Registered ${tools.length} tools`, {

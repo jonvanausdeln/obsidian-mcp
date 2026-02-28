@@ -382,7 +382,7 @@ OBSIDIAN_VAULT_PATH=/path/to/vault LOG_LEVEL=debug npm run dev
    ```bash
    npm test
 
-   # All 62+ tests should pass
+   # All 241+ tests should pass
    ```
 
 ### Verify in Claude Desktop
@@ -412,113 +412,72 @@ Claude: [Uses list_notes tool to show files]
 
 ## Available Tools
 
-### Current Status: 7 Tools Implemented ✅
+### 10 Tools Available
 
-The server currently provides **7 working tools** with full hybrid mode support:
-
-#### File Operations (5 tools)
+#### Note Operations (5 tools)
 
 **`read_note`** - Read a note's content
 ```typescript
-{
-  path: "Daily/2025-01-15.md"  // Relative path from vault root
-}
+{ path: "Daily/2025-01-15.md" }
 ```
 
 **`write_note`** - Create or overwrite a note
 ```typescript
-{
-  path: "Projects/NewNote.md",
-  content: "# My New Note\n\nContent here...",
-  createDirs: true  // Create parent directories if needed
-}
+{ path: "Projects/NewNote.md", content: "# My New Note\n\nContent here...", createDirs: true }
 ```
 
 **`append_note`** - Append content to existing note
 ```typescript
-{
-  path: "Daily/2025-01-15.md",
-  content: "\n## New Section\n\nAdditional content...",
-  separator: "\n\n"  // Optional, default is "\n\n"
-}
+{ path: "Daily/2025-01-15.md", content: "\n## New Section\n\nAdditional content...", separator: "\n\n" }
 ```
 
-#### Search Operations (2 tools)
+**`update_frontmatter`** - Add, update, or remove YAML frontmatter fields
+```typescript
+{ path: "note.md", updates: { tags: ["ai", "mcp"], status: "complete" }, remove: ["draft"], merge: true }
+```
+
+**`apply_template`** - Apply template with variable substitution
+```typescript
+{ path: "new-note.md", templatePath: "templates/project.md", variables: { title: "My Project" }, position: "replace" }
+```
+
+Built-in variables: `{{date}}`, `{{time}}`, `{{date-long}}`
+
+#### Search & Discovery (3 tools)
 
 **`list_notes`** - List notes in vault
 ```typescript
-{
-  folder: "Daily/",        // Optional: specific folder
-  recursive: true,         // Include subdirectories
-  pattern: "2025-*.md",    // Optional: glob pattern
-  sortBy: "modified",      // Sort by: name, modified, created, size
-  order: "desc",           // Order: asc, desc
-  limit: 50                // Optional: limit results
-}
+{ folder: "Daily/", recursive: true, pattern: "2025-*.md", sortBy: "modified", order: "desc", limit: 50 }
 ```
 
 **`search_notes`** - Full-text search note content
 ```typescript
-{
-  query: "project ideas",
-  caseSensitive: false,      // Optional: case-sensitive search
-  useRegex: false,           // Optional: use regex pattern
-  folder: "Projects/",       // Optional: limit to folder
-  contextLines: 2,           // Optional: show context lines
-  limit: 50                  // Optional: max results
-}
+{ query: "project ideas", caseSensitive: false, useRegex: false, folder: "Projects/", contextLines: 2, limit: 50 }
 ```
 
-#### Daily Note Operations (2 tools) - Hybrid Mode ⭐
+**`get_tags`** - Extract and analyze tags from vault
+```typescript
+{ path: "projects", recursive: true, includeCount: true }
+```
 
-These tools work in **hybrid mode**, using the Obsidian API when available for enhanced features:
+Returns all tags (frontmatter + inline #tags) with usage counts and file locations.
+
+#### Daily Notes (2 tools) - Hybrid Mode
+
+These use the REST API when available, falling back to filesystem:
 
 **`get_daily_note`** - Get or locate daily note
 ```typescript
-{
-  date: "2025-11-01"  // Optional: YYYY-MM-DD format, defaults to today
-}
+{ date: "2025-11-01" }  // Optional, defaults to today
 // Returns: { path, exists, content?, stats?, source: 'api' | 'filesystem' }
 ```
 
-**Benefits of API mode:**
-- Automatically detects your Obsidian daily note settings (folder, format)
-- Works with Periodic Notes plugin
-- Respects custom date formats
-
 **`append_to_daily`** - Append content to daily note
 ```typescript
-{
-  content: "- [ ] Review pull requests",
-  date: "2025-11-01",      // Optional: YYYY-MM-DD, defaults to today
-  timestamp: true,         // Optional: prefix with time "2:30 PM - content"
-  createIfMissing: true,   // Optional: create note if doesn't exist
-  separator: "\n"          // Optional: separator before content
-}
+{ content: "- [ ] Review pull requests", timestamp: true, createIfMissing: true }
 ```
 
-**Benefits of API mode:**
-- Changes are immediately visible to Tasks plugin
-- Works with Templater plugin
-- Triggers Obsidian's auto-save and sync
-
----
-
-### Planned Tools (Future Sessions)
-
-**Session 5: Templates & Frontmatter**
-- `apply_template` - Insert template via Obsidian commands
-- `update_frontmatter` - Update YAML frontmatter
-- `get_tags` - List all tags in vault
-
-**Session 6: Vault Analysis**
-- `get_vault_stats` - Vault statistics
-- `find_backlinks` - Find backlinks to a note
-- `get_graph_connections` - Get note relationships
-
-**Session 7: Organization**
-- `move_note` - Move/rename notes
-- `batch_update` - Bulk operations
+API mode benefits: auto-detects daily note settings, Tasks plugin integration, triggers Obsidian sync.
 
 ---
 
@@ -569,12 +528,11 @@ These tools work in **hybrid mode**, using the Obsidian API when available for e
 **User**: "Move all completed tasks from my daily notes to a completed tasks archive"
 
 **Claude**:
-1. Calls `list_notes` with `path: "Daily/"`
+1. Calls `list_notes` with `folder: "Daily/"`
 2. For each daily note:
    - Calls `read_note`
    - Extracts completed tasks (- [x] items)
    - Calls `append_note` on `Archive/Completed.md`
-   - Calls `update_note_section` to remove from daily note
 
 ### Example 4: Research Assistant (Claude Code)
 
@@ -585,7 +543,6 @@ These tools work in **hybrid mode**, using the Obsidian API when available for e
 2. Reads matching notes
 3. Suggests organization structure
 4. Creates new organized notes using `write_note`
-5. Updates existing notes with `update_note_section`
 
 ---
 
@@ -785,9 +742,8 @@ The server handles concurrent requests safely, but for best performance:
 ### Resources
 
 - **Documentation**: See [README.md](README.md) for project overview
-- **Architecture**: See [PLAN.md](PLAN.md) for detailed architecture
-- **Research**: See [RESEARCH.md](RESEARCH.md) for API research
-- **Development**: See [SESSION_LOG.md](SESSION_LOG.md) for progress
+- **Architecture**: See [CLAUDE.md](CLAUDE.md) for architecture reference
+- **Roadmap**: See [.claude/ROADMAP.md](.claude/ROADMAP.md) for planned features
 
 ### Reporting Issues
 
@@ -810,5 +766,5 @@ Once you have the server running:
 
 ---
 
-*Last updated: 2025-11-01*
-*Status: Session 4 Complete - 7 Tools Operational, Hybrid Mode Active ✅*
+*Last updated: 2026-02-28*
+*Status: 10 Tools Operational, Hybrid Mode Active*

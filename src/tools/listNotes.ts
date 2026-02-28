@@ -14,6 +14,7 @@ const ListNotesInputSchema = z.object({
   pattern: z.string().optional(),
   sortBy: z.enum(['name', 'modified', 'created', 'size']).optional().default('name'),
   order: z.enum(['asc', 'desc']).optional().default('asc'),
+  offset: z.number().int().min(0).optional(),
   limit: z.number().int().positive().optional(),
   dateRange: z
     .object({
@@ -55,7 +56,7 @@ export class ListNotesTool extends BaseTool<ListNotesInput, ListNotesResult> {
   readonly name = 'list_notes';
   readonly description =
     'List notes in the Obsidian vault with optional filtering, sorting, and pattern matching. ' +
-    'Supports recursive listing, glob patterns, date range filtering, and sorting by various fields.';
+    'Supports recursive listing, glob patterns, date range filtering, sorting, and pagination (offset + limit).';
   protected readonly inputSchema = ListNotesInputSchema;
 
   /**
@@ -94,8 +95,10 @@ export class ListNotesTool extends BaseTool<ListNotesInput, ListNotesResult> {
     // Sort notes
     const sorted = this.sortNotes(filtered, input.sortBy, input.order);
 
-    // Apply limit
-    const limited = input.limit ? sorted.slice(0, input.limit) : sorted;
+    // Apply offset and limit
+    const offset = input.offset ?? 0;
+    const sliced = offset > 0 ? sorted.slice(offset) : sorted;
+    const limited = input.limit ? sliced.slice(0, input.limit) : sliced;
 
     return {
       notes: limited,

@@ -152,8 +152,8 @@ Once configured, you can interact with your Obsidian vault through Claude Deskto
 ## Documentation
 
 - **[Usage Guide](./USAGE.md)** - Detailed setup, configuration, and usage instructions
-- **[Architecture Overview](./CLAUDE.md)** - Quick reference for implementation details
-- **[Session History](./.claude/SESSIONS.md)** - Development progress and session logs
+- **[Architecture](./CLAUDE.md)** - Project structure and patterns
+- **[Roadmap](./.claude/ROADMAP.md)** - Planned features and next steps
 
 ## Development
 
