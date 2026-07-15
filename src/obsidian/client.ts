@@ -167,7 +167,7 @@ export class ObsidianClient {
 
     // Filesystem fallback
     this.logger.debug('Using filesystem to get daily note', { date });
-    const path = this.filesystemClient.getDailyNotePath(date);
+    const path = await this.filesystemClient.getDailyNotePath(date);
 
     try {
       const result = await this.filesystemClient.readFile(path);

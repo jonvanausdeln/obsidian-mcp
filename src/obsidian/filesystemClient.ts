@@ -208,16 +208,47 @@ export class FileSystemClient {
 
   /**
    * Get daily note path for a given ISO date string (YYYY-MM-DD)
-   * Uses default pattern: Daily Notes/YYYY-MM-DD.md
-   * Can be customized in future to detect user's daily note settings
+   * Pattern: <folder>/YYYY-MM-DD.md
+   *
+   * The folder is auto-detected from the configured candidate folders
+   * (default: "Daily Notes" then "Daily"). Selection order:
+   *   1. A candidate where the note file already exists
+   *   2. A candidate whose folder directory already exists
+   *   3. The first configured candidate (used when creating a new note)
    */
-  getDailyNotePath(dateStr: string): string {
+  async getDailyNotePath(dateStr: string): Promise<string> {
     this.logger.debug('Getting daily note path', { date: dateStr });
 
     const date = parseDateISO(dateStr);
-    const path = getDefaultDailyNotePath(date, 'Daily Notes');
+    const candidates = this.config.dailyNotesFolders;
 
-    this.logger.debug('Daily note path resolved', { date: dateStr, path });
+    // 1. Prefer a candidate whose note file already exists
+    for (const folder of candidates) {
+      const candidatePath = getDefaultDailyNotePath(date, folder);
+      if (await this.fileExists(this.resolveVaultPath(candidatePath))) {
+        this.logger.debug('Daily note path resolved (existing file)', {
+          date: dateStr,
+          path: candidatePath,
+        });
+        return candidatePath;
+      }
+    }
+
+    // 2. Otherwise prefer a candidate whose folder directory already exists
+    for (const folder of candidates) {
+      if (await this.directoryExists(this.resolveVaultPath(folder))) {
+        const candidatePath = getDefaultDailyNotePath(date, folder);
+        this.logger.debug('Daily note path resolved (existing folder)', {
+          date: dateStr,
+          path: candidatePath,
+        });
+        return candidatePath;
+      }
+    }
+
+    // 3. Fall back to the first configured candidate (for a brand-new note)
+    const path = getDefaultDailyNotePath(date, candidates[0]);
+    this.logger.debug('Daily note path resolved (default)', { date: dateStr, path });
 
     return path;
   }
@@ -241,6 +272,18 @@ export class FileSystemClient {
     try {
       await fs.access(absolutePath);
       return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if a directory exists
+   */
+  private async directoryExists(absolutePath: string): Promise<boolean> {
+    try {
+      const stats = await fs.stat(absolutePath);
+      return stats.isDirectory();
     } catch {
       return false;
     }

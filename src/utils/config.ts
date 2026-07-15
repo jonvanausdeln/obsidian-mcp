@@ -27,6 +27,9 @@ const ConfigSchema = z.object({
   maxFileSizeMB: z.number().positive().default(10),
   enableDelete: z.boolean().default(true),
 
+  // Optional - Daily note folder candidates (first match wins)
+  dailyNotesFolders: z.array(z.string().min(1)).nonempty().default(['Daily Notes', 'Daily']),
+
   // Optional - Retry settings
   retryMaxAttempts: z.number().int().positive().default(3),
   retryBaseDelay: z.number().int().positive().default(100),
@@ -46,6 +49,11 @@ function parseConfig(): Config {
     logLevel: process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error' | undefined,
     maxFileSizeMB: process.env.MAX_FILE_SIZE_MB ? parseInt(process.env.MAX_FILE_SIZE_MB, 10) : undefined,
     enableDelete: process.env.ENABLE_DELETE !== 'false',
+    dailyNotesFolders: process.env.OBSIDIAN_DAILY_NOTES_FOLDER
+      ? process.env.OBSIDIAN_DAILY_NOTES_FOLDER.split(',')
+          .map((folder) => folder.trim())
+          .filter((folder) => folder.length > 0)
+      : undefined,
     retryMaxAttempts: process.env.RETRY_MAX_ATTEMPTS ? parseInt(process.env.RETRY_MAX_ATTEMPTS, 10) : undefined,
     retryBaseDelay: process.env.RETRY_BASE_DELAY ? parseInt(process.env.RETRY_BASE_DELAY, 10) : undefined,
   };

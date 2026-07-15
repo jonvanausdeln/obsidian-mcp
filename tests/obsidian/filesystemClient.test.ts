@@ -31,6 +31,7 @@ describe('FileSystemClient', () => {
       retryMaxAttempts: 3,
       retryBaseDelay: 10,
       verifySsl: false,
+      dailyNotesFolders: ['Daily Notes', 'Daily'],
     };
 
     logger = initializeLogger(config);
@@ -396,6 +397,66 @@ describe('FileSystemClient', () => {
 
       // Assert
       expect(result.content).toBe(testContent);
+    });
+  });
+
+  describe('getDailyNotePath', () => {
+    const date = '2026-07-15';
+
+    it('should default to the first candidate folder for a brand-new note', async () => {
+      // Act - no daily-note folders exist yet
+      const path = await client.getDailyNotePath(date);
+
+      // Assert
+      expect(path).toBe('Daily Notes/2026-07-15.md');
+    });
+
+    it('should use an existing folder over the default', async () => {
+      // Arrange - only the "Daily" folder exists in the vault
+      await fs.mkdir(join(testVaultPath, 'Daily'), { recursive: true });
+
+      // Act
+      const path = await client.getDailyNotePath(date);
+
+      // Assert
+      expect(path).toBe('Daily/2026-07-15.md');
+    });
+
+    it('should prefer a folder that already contains the note file', async () => {
+      // Arrange - both folders exist, but the note lives in the lower-priority one
+      await fs.mkdir(join(testVaultPath, 'Daily Notes'), { recursive: true });
+      await fs.mkdir(join(testVaultPath, 'Daily'), { recursive: true });
+      await fs.writeFile(join(testVaultPath, 'Daily', `${date}.md`), '# Existing');
+
+      // Act
+      const path = await client.getDailyNotePath(date);
+
+      // Assert - existing file wins even though "Daily Notes" is listed first
+      expect(path).toBe('Daily/2026-07-15.md');
+    });
+
+    it('should respect candidate folder ordering when multiple folders exist', async () => {
+      // Arrange - both folders exist but neither has the note yet
+      await fs.mkdir(join(testVaultPath, 'Daily Notes'), { recursive: true });
+      await fs.mkdir(join(testVaultPath, 'Daily'), { recursive: true });
+
+      // Act
+      const path = await client.getDailyNotePath(date);
+
+      // Assert - falls back to the first configured candidate
+      expect(path).toBe('Daily Notes/2026-07-15.md');
+    });
+
+    it('should honor a custom candidate list from config', async () => {
+      // Arrange - custom folder list with a single non-default folder
+      const customConfig = { ...config, dailyNotesFolders: ['Journal'] as [string, ...string[]] };
+      const customClient = new FileSystemClient(customConfig, logger, retryManager);
+
+      // Act
+      const path = await customClient.getDailyNotePath(date);
+
+      // Assert
+      expect(path).toBe('Journal/2026-07-15.md');
     });
   });
 
