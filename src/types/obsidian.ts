@@ -18,6 +18,10 @@ export enum ObsidianErrorType {
   NETWORK_ERROR = 'NETWORK_ERROR',
   AUTHENTICATION_ERROR = 'AUTHENTICATION_ERROR',
   EDIT_FAILED = 'EDIT_FAILED',
+  /** The note exists but the requested heading does not */
+  SECTION_NOT_FOUND = 'SECTION_NOT_FOUND',
+  /** A heading selector or occurrence matched more than one (or not the requested) heading */
+  AMBIGUOUS_HEADING = 'AMBIGUOUS_HEADING',
   UNKNOWN = 'UNKNOWN',
 }
 

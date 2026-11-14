@@ -95,7 +95,7 @@ describe('UpdateSectionTool', () => {
     await tool.execute({ path: 'shop.md', heading: 'Produce > Herbs', content: '- dill', mode: 'append' });
     expect(await read('shop.md')).toContain('### Herbs\n- basil\n- dill\n');
     await expect(tool.execute({ path: 'shop.md', heading: '# Produce', content: 'x' })).rejects.toMatchObject({
-      type: ObsidianErrorType.EDIT_FAILED,
+      type: ObsidianErrorType.SECTION_NOT_FOUND,
     });
   });
 
@@ -106,7 +106,7 @@ describe('UpdateSectionTool', () => {
 
   it('errors with the available headings when not found', async () => {
     await expect(tool.execute({ path: 'shop.md', heading: 'Bakery', content: '- bread' })).rejects.toMatchObject({
-      type: ObsidianErrorType.EDIT_FAILED,
+      type: ObsidianErrorType.SECTION_NOT_FOUND,
       details: { suggestedAction: expect.stringContaining('## Dairy') },
     });
   });
@@ -125,7 +125,7 @@ describe('UpdateSectionTool', () => {
   it('errors on duplicate headings unless occurrence is given', async () => {
     await write('dup.md', '## Notes\na\n## Notes\nb\n');
     await expect(tool.execute({ path: 'dup.md', heading: 'Notes', content: 'x' })).rejects.toMatchObject({
-      type: ObsidianErrorType.EDIT_FAILED,
+      type: ObsidianErrorType.AMBIGUOUS_HEADING,
       message: expect.stringContaining('matches 2'),
     });
     await tool.execute({ path: 'dup.md', heading: 'Notes', content: 'x', occurrence: 2 });

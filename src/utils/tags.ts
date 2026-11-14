@@ -76,7 +76,12 @@ function valueEquals(actual: unknown, expected: unknown): boolean {
     return actual.trim().toLowerCase() === expected.trim().toLowerCase();
   }
   if (actual instanceof Date && typeof expected === 'string') {
-    return actual.toISOString().slice(0, 10) === expected;
+    return actual.toISOString().slice(0, 10) === expected.trim();
+  }
+  // Callers often send "5" or "true" for YAML 5 / true (and vice versa): compare as text
+  const scalar = (v: unknown) => typeof v === 'number' || typeof v === 'boolean';
+  if ((scalar(actual) && typeof expected === 'string') || (typeof actual === 'string' && scalar(expected))) {
+    return String(actual).trim().toLowerCase() === String(expected).trim().toLowerCase();
   }
   return actual === expected;
 }

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { BaseTool, type ToolAnnotations } from './base.js';
 import type { ApplyTemplateResult } from '../types/obsidian.js';
+import { withFileLock } from '../utils/fileLock.js';
 import { getTodayISO, formatDateLong, getCurrentTime } from '../utils/dateUtils.js';
 
 /**
@@ -92,39 +93,37 @@ export class ApplyTemplateTool extends BaseTool<ApplyTemplateInput, ApplyTemplat
       if (processedContent.includes(placeholder)) {
         processedContent = processedContent.replace(
           new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
-          value
+          () => value // function form keeps "$&" etc. in values literal
         );
         appliedVariables.push(key);
       }
     }
 
-    // Handle insertion based on position
-    let finalContent: string;
+    // Read-modify-write under the per-note lock so parallel edits aren't lost
+    await withFileLock(input.path, async () => {
+      let finalContent: string;
 
-    if (input.position === 'replace') {
-      // Replace entire file
-      finalContent = processedContent;
-    } else {
-      // Read existing content if file exists
-      let existingContent = '';
-      try {
-        const { content } = await this.client.readFile(input.path);
-        existingContent = content;
-      } catch (error) {
-        // File doesn't exist - that's okay for prepend/append
-        this.logger.debug(`Target file doesn't exist yet: ${input.path}`);
-      }
-
-      if (input.position === 'prepend') {
-        finalContent = processedContent + '\n\n' + existingContent;
+      if (input.position === 'replace') {
+        finalContent = processedContent;
       } else {
-        // append
-        finalContent = existingContent + (existingContent ? '\n\n' : '') + processedContent;
-      }
-    }
+        // Read existing content if file exists
+        let existingContent = '';
+        try {
+          const { content } = await this.client.readFile(input.path);
+          existingContent = content;
+        } catch {
+          // File doesn't exist - that's okay for prepend/append
+          this.logger.debug(`Target file doesn't exist yet: ${input.path}`);
+        }
 
-    // Write the result
-    await this.client.writeFile(input.path, finalContent, true);
+        finalContent =
+          input.position === 'prepend'
+            ? processedContent + '\n\n' + existingContent
+            : existingContent + (existingContent ? '\n\n' : '') + processedContent;
+      }
+
+      await this.client.writeFile(input.path, finalContent, true);
+    });
 
     this.logger.info(
       `Applied template ${input.templatePath} to ${input.path} ` +

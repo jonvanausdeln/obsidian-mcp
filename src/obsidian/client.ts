@@ -3,6 +3,7 @@ import type { Config } from '../utils/config.js';
 import type { RetryManager } from '../utils/retry.js';
 import { FileSystemClient } from './filesystemClient.js';
 import { RestApiClient } from './restApiClient.js';
+import { withFileLock } from '../utils/fileLock.js';
 import type {
   ReadNoteResult,
   WriteNoteResult,
@@ -222,8 +223,25 @@ export class ObsidianClient {
       finalContent = `${timeStr} - ${content}`;
     }
 
+    // Serialize with other writers: two appends on a new day must not both create the note
+    return withFileLock(path, () => this.appendToDailyLocked(path, date, finalContent, separator, createIfMissing));
+  }
+
+  private async appendToDailyLocked(
+    path: string,
+    date: string,
+    finalContent: string,
+    separator: string,
+    createIfMissing: boolean
+  ): Promise<AppendToDailyResult> {
+    // Re-check existence now that we hold the lock
+    const exists = await this.filesystemClient
+      .readFile(path)
+      .then(() => true)
+      .catch(() => false);
+
     // Try API append first if available
-    if (this.apiAvailable && dailyNoteInfo.exists) {
+    if (this.apiAvailable && exists) {
       try {
         this.logger.debug('Attempting to append to daily note via API', { path, date });
         await this.apiClient.appendFile(path, separator + finalContent);
@@ -247,7 +265,7 @@ export class ObsidianClient {
     this.logger.debug('Using filesystem to append to daily note', { path, date });
 
     // Create file if missing and requested
-    if (!dailyNoteInfo.exists && createIfMissing) {
+    if (!exists && createIfMissing) {
       // Parse date parts directly from ISO string to avoid timezone shift
       const parts = date.split('-').map(Number);
       const dateObj = new Date(parts[0]!, parts[1]! - 1, parts[2]!); // Local timezone
@@ -268,7 +286,7 @@ export class ObsidianClient {
       };
     }
 
-    const appendResult = await this.filesystemClient.appendFile(path, finalContent, separator);
+    const appendResult = await this.filesystemClient.appendFileUnlocked(path, finalContent, separator);
 
     return {
       success: appendResult.success,

@@ -8,10 +8,15 @@
 export type Eol = '\n' | '\r\n';
 
 /**
- * Normalize text to LF and report the note's original line ending
+ * Normalize text to LF and report the note's dominant line ending.
+ *
+ * A mostly-LF note with a stray pasted CRLF line stays LF (and vice versa),
+ * so a small edit doesn't rewrite every line ending in the file.
  */
 export function toLF(text: string): { text: string; eol: Eol } {
-  const eol: Eol = text.includes('\r\n') ? '\r\n' : '\n';
+  const crlf = text.match(/\r\n/g)?.length ?? 0;
+  const lf = (text.match(/\n/g)?.length ?? 0) - crlf;
+  const eol: Eol = crlf > lf ? '\r\n' : '\n';
   return { text: text.replace(/\r\n/g, '\n'), eol };
 }
 
@@ -73,9 +78,12 @@ export function findHeadings(lines: string[]): Heading[] {
     }
     if (fence !== null) continue;
 
-    const m = line.match(/^\s{0,3}(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$/);
+    const m = line.match(/^\s{0,3}(#{1,6})[ \t]+(.*)$/);
     if (m) {
-      headings.push({ line: i, level: m[1]!.length, text: m[2]!.trim() });
+      // A closing #-sequence only counts when preceded by whitespace (CommonMark),
+      // so "## C#" keeps its "#" while "## Title ##" drops the closer
+      const text = (' ' + m[2]!).replace(/[ \t]+#+[ \t]*$/, '').trim();
+      headings.push({ line: i, level: m[1]!.length, text });
     }
   }
   return headings;
@@ -85,9 +93,12 @@ export function findHeadings(lines: string[]): Heading[] {
  * Parse a heading selector like "Produce", "## Produce", or "Groceries > Produce".
  * Each part may carry its own #'s to pin the level.
  */
-export function parseHeadingSelector(selector: string): Array<{ text: string; level?: number }> {
+export function parseHeadingSelector(
+  selector: string,
+  separator: string | RegExp = '>'
+): Array<{ text: string; level?: number }> {
   return selector
-    .split('>')
+    .split(separator)
     .map((part) => part.trim())
     .filter(Boolean)
     .map((part) => {
@@ -119,7 +130,39 @@ export function sectionRange(headings: Heading[], index: number, totalLines: num
  * ("Parent > Child") requires each part to be nested inside the previous one.
  */
 export function matchHeadings(headings: Heading[], totalLines: number, selector: string): number[] {
-  const parts = parseHeadingSelector(selector);
+  return resolveHeadingSelector(headings, totalLines, selector).matches;
+}
+
+/**
+ * Resolve a selector, tolerating headings that contain ">" (e.g. "Inbox -> Done").
+ * Tries, in order: the whole selector as one heading, splitting on " > " (with
+ * spaces), then splitting on every ">". Returns the first reading that matches,
+ * along with the parts it used.
+ */
+export function resolveHeadingSelector(
+  headings: Heading[],
+  totalLines: number,
+  selector: string
+): { matches: number[]; parts: Array<{ text: string; level?: number }> } {
+  const readings = [
+    parseHeadingSelector(selector, /(?!)/),
+    parseHeadingSelector(selector, /\s+>\s+/),
+    parseHeadingSelector(selector, '>'),
+  ];
+  for (const parts of readings) {
+    const matches = matchHeadingParts(headings, totalLines, parts);
+    if (matches.length > 0) return { matches, parts };
+  }
+  // Nothing matched (e.g. createIfMissing): nest only on " > " with spaces,
+  // so "Inbox -> Done" is created as one heading
+  return { matches: [], parts: readings[1]! };
+}
+
+export function matchHeadingParts(
+  headings: Heading[],
+  totalLines: number,
+  parts: Array<{ text: string; level?: number }>
+): number[] {
   if (parts.length === 0) return [];
 
   const norm = (s: string) => s.trim().toLowerCase();

@@ -5,10 +5,16 @@
  * shopping list). Without serialization both calls read the old content and
  * the second write silently drops the first edit.
  */
+import { posix } from 'path';
+
 const tails = new Map<string, Promise<unknown>>();
 
 export async function withFileLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
-  const key = path.replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+  // Normalize so "Lists//Shopping.md", "./Lists/Shopping.md" and "lists\shopping.md" share a lock
+  const key = posix
+    .normalize(path.replace(/\\/g, '/'))
+    .replace(/^(\.\/|\/)+/, '')
+    .toLowerCase();
   const previous = tails.get(key) ?? Promise.resolve();
   const run = previous.catch(() => undefined).then(fn);
   tails.set(key, run);

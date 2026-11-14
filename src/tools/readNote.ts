@@ -90,7 +90,7 @@ export class ReadNoteTool extends BaseTool<ReadNoteInput, ReadNoteToolResult> {
         .join(' | ') || '(no headings)';
 
     if (matches.length === 0) {
-      throw createError(ObsidianErrorType.FILE_NOT_FOUND, `Heading "${input.heading}" not found in ${input.path}`, {
+      throw createError(ObsidianErrorType.SECTION_NOT_FOUND, `Heading "${input.heading}" not found in ${input.path}`, {
         path: input.path,
         suggestedAction: `Headings in this note: ${available()}`,
       });
@@ -98,7 +98,7 @@ export class ReadNoteTool extends BaseTool<ReadNoteInput, ReadNoteToolResult> {
     if (matches.length > 1 && input.occurrence === undefined) {
       const where = matches.map((idx) => `line ${headings[idx]!.line + 1}`).join(', ');
       throw createError(
-        ObsidianErrorType.INVALID_PATH,
+        ObsidianErrorType.AMBIGUOUS_HEADING,
         `Heading "${input.heading}" matches ${matches.length} headings (${where})`,
         { path: input.path, suggestedAction: 'Use "Parent > Child", add #s for the level, or pass occurrence (1-based).' }
       );
@@ -106,7 +106,7 @@ export class ReadNoteTool extends BaseTool<ReadNoteInput, ReadNoteToolResult> {
     const pick = input.occurrence ?? 1;
     if (pick > matches.length) {
       throw createError(
-        ObsidianErrorType.INVALID_PATH,
+        ObsidianErrorType.AMBIGUOUS_HEADING,
         `occurrence ${pick} requested but only ${matches.length} matching heading(s) found`,
         { path: input.path }
       );

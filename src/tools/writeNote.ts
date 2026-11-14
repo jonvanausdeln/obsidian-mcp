@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { BaseTool, type ToolAnnotations } from './base.js';
 import type { WriteNoteResult } from '../types/obsidian.js';
+import { withFileLock } from '../utils/fileLock.js';
 
 /**
  * Input schema for write_note tool
@@ -57,6 +58,11 @@ export class WriteNoteTool extends BaseTool<WriteNoteInput, WriteNoteResult> {
    * @returns Write result with success status and creation info
    */
   protected async run(input: WriteNoteInput): Promise<WriteNoteResult> {
+    // Serialize with edit_note/update_section so an overwrite can't land mid-edit
+    return withFileLock(input.path, () => this.write(input));
+  }
+
+  private async write(input: WriteNoteInput): Promise<WriteNoteResult> {
     this.logger.debug(`Writing note: ${input.path}`, {
       contentLength: input.content.length,
       overwrite: input.overwrite,

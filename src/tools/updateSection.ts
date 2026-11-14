@@ -5,8 +5,8 @@ import { ObsidianErrorType } from '../types/obsidian.js';
 import type { UpdateSectionResult } from '../types/obsidian.js';
 import {
   findHeadings,
-  matchHeadings,
-  parseHeadingSelector,
+  matchHeadingParts,
+  resolveHeadingSelector,
   restoreEol,
   sectionRange,
   toLF,
@@ -84,7 +84,7 @@ export class UpdateSectionTool extends BaseTool<UpdateSectionInput, UpdateSectio
     const headings = findHeadings(lines);
     const contentLines = toLF(input.content).text.replace(/\n$/, '').split('\n');
 
-    const matches = matchHeadings(headings, lines.length, input.heading);
+    const { matches, parts } = resolveHeadingSelector(headings, lines.length, input.heading);
 
     let newLines: string[];
     let target: Heading;
@@ -93,20 +93,20 @@ export class UpdateSectionTool extends BaseTool<UpdateSectionInput, UpdateSectio
     if (matches.length === 0) {
       if (!input.createIfMissing) {
         const available = headings.map((h) => `${'#'.repeat(h.level)} ${h.text}`).slice(0, 30);
-        throw createError(ObsidianErrorType.EDIT_FAILED, `Heading "${input.heading}" not found in ${input.path}`, {
+        throw createError(ObsidianErrorType.SECTION_NOT_FOUND, `Heading "${input.heading}" not found in ${input.path}`, {
           path: input.path,
           suggestedAction:
             (available.length ? `Headings in this note: ${available.join(' | ')}. ` : 'This note has no headings. ') +
             'Set createIfMissing: true to add it.',
         });
       }
-      ({ lines: newLines, heading: target } = this.insertHeading(lines, headings, input, contentLines));
+      ({ lines: newLines, heading: target } = this.insertHeading(lines, headings, input, parts, contentLines));
       created = true;
     } else {
       if (matches.length > 1 && input.occurrence === undefined) {
         const where = matches.map((idx) => `line ${headings[idx]!.line + 1}`).join(', ');
         throw createError(
-          ObsidianErrorType.EDIT_FAILED,
+          ObsidianErrorType.AMBIGUOUS_HEADING,
           `Heading "${input.heading}" matches ${matches.length} headings (${where})`,
           {
             path: input.path,
@@ -117,7 +117,7 @@ export class UpdateSectionTool extends BaseTool<UpdateSectionInput, UpdateSectio
       const pick = input.occurrence ?? 1;
       if (pick > matches.length) {
         throw createError(
-          ObsidianErrorType.EDIT_FAILED,
+          ObsidianErrorType.AMBIGUOUS_HEADING,
           `occurrence ${pick} requested but only ${matches.length} matching heading(s) found`,
           { path: input.path }
         );
@@ -195,19 +195,20 @@ export class UpdateSectionTool extends BaseTool<UpdateSectionInput, UpdateSectio
     lines: string[],
     headings: Heading[],
     input: UpdateSectionInput,
+    parts: Array<{ text: string; level?: number }>,
     contentLines: string[]
   ): { lines: string[]; heading: Heading } {
-    const parts = parseHeadingSelector(input.heading);
     const last = parts[parts.length - 1]!;
     let insertAt = lines.length;
     let level = last.level ?? 2;
 
     if (parts.length > 1) {
-      const parentSelector = input.heading.slice(0, input.heading.lastIndexOf('>'));
-      const parents = matchHeadings(headings, lines.length, parentSelector);
+      const parentParts = parts.slice(0, -1);
+      const parentSelector = parentParts.map((p) => p.text).join(' > ');
+      const parents = matchHeadingParts(headings, lines.length, parentParts);
       if (parents.length !== 1) {
         throw createError(
-          ObsidianErrorType.EDIT_FAILED,
+          parents.length === 0 ? ObsidianErrorType.SECTION_NOT_FOUND : ObsidianErrorType.AMBIGUOUS_HEADING,
           parents.length === 0
             ? `Parent heading "${parentSelector.trim()}" not found in ${input.path}`
             : `Parent heading "${parentSelector.trim()}" is ambiguous (${parents.length} matches)`,

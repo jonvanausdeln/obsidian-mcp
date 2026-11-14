@@ -110,7 +110,8 @@ export class FileSystemClient {
     return withFileLock(path, () => this.appendFileUnlocked(path, content, separator));
   }
 
-  private async appendFileUnlocked(path: string, content: string, separator: string): Promise<AppendNoteResult> {
+  /** Append without taking the file lock. The caller must already hold withFileLock(path). */
+  async appendFileUnlocked(path: string, content: string, separator: string): Promise<AppendNoteResult> {
     this.logger.debug('Appending to file', { path, contentLength: content.length });
 
     const absolutePath = this.resolveVaultPath(path);
