@@ -412,9 +412,9 @@ Claude: [Uses list_notes tool to show files]
 
 ## Available Tools
 
-### 10 Tools Available
+### 14 Tools Available
 
-#### Note Operations (5 tools)
+#### Note Operations
 
 **`read_note`** - Read a note's content
 ```typescript
@@ -430,6 +430,19 @@ Claude: [Uses list_notes tool to show files]
 ```typescript
 { path: "Daily/2025-01-15.md", content: "\n## New Section\n\nAdditional content...", separator: "\n\n" }
 ```
+
+**`edit_note`** - Exact find-and-replace inside a note (all edits succeed or none are written)
+```typescript
+{ path: "Lists/Shopping.md", edits: [{ oldText: "- [ ] eggs", newText: "- [x] eggs" }] }
+```
+Each `oldText` must match exactly once unless `replaceAll: true`. Works on CRLF notes and keeps their line endings.
+
+**`update_section`** - Replace, append, or prepend content under a heading
+```typescript
+{ path: "Lists/Shopping.md", heading: "Produce", content: "- pears", mode: "append" }
+{ path: "Daily/2026-11-14.md", heading: "Tasks > Done", content: "- shipped v0.2", mode: "append", createIfMissing: true }
+```
+By default only the content directly under the heading is touched (sub-headings are kept); set `includeSubsections: true` to cover the whole section. Headings in code blocks and frontmatter are ignored. Use `## Heading`, `Parent > Child`, or `occurrence` to disambiguate.
 
 **`update_frontmatter`** - Add, update, or remove YAML frontmatter fields
 ```typescript
@@ -767,4 +780,4 @@ Once you have the server running:
 ---
 
 *Last updated: 2026-02-28*
-*Status: 10 Tools Operational, Hybrid Mode Active*
+*Status: 14 Tools Operational, Hybrid Mode Active*

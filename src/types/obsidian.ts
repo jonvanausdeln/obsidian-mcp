@@ -17,6 +17,7 @@ export enum ObsidianErrorType {
   API_ERROR = 'API_ERROR',
   NETWORK_ERROR = 'NETWORK_ERROR',
   AUTHENTICATION_ERROR = 'AUTHENTICATION_ERROR',
+  EDIT_FAILED = 'EDIT_FAILED',
   UNKNOWN = 'UNKNOWN',
 }
 
@@ -106,7 +107,26 @@ export interface AppendNoteResult {
  */
 export interface UpdateSectionResult {
   success: boolean;
+  path: string;
+  /** Matched heading text as it appears in the note */
+  heading: string;
+  headingLevel: number;
   sectionFound: boolean;
+  /** True when the heading was missing and createIfMissing added it */
+  created: boolean;
+  mode: 'replace' | 'append' | 'prepend';
+  newLength: number;
+}
+
+/**
+ * Edit note result
+ */
+export interface EditNoteResult {
+  success: boolean;
+  path: string;
+  /** Total replacements made across all edits */
+  replacements: number;
+  newLength: number;
 }
 
 /**

@@ -18,6 +18,8 @@ import { GetTagsTool } from './tools/getTags.js';
 import { ApplyTemplateTool } from './tools/applyTemplate.js';
 import { DeleteNoteTool } from './tools/deleteNote.js';
 import { GetActiveFileTool } from './tools/getActiveFile.js';
+import { EditNoteTool } from './tools/editNote.js';
+import { UpdateSectionTool } from './tools/updateSection.js';
 import { formatError } from './obsidian/errorHandler.js';
 import type { ObsidianError } from './types/obsidian.js';
 import type { BaseTool } from './tools/base.js';
@@ -87,6 +89,8 @@ async function main() {
     new ReadNoteTool(client, logger),
     new WriteNoteTool(client, logger),
     new AppendNoteTool(client, logger),
+    new EditNoteTool(client, logger),
+    new UpdateSectionTool(client, logger),
     new ListNotesTool(client, logger),
     new SearchNotesTool(client, logger),
     new GetDailyNoteTool(client, logger),

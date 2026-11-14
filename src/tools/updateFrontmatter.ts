@@ -2,6 +2,7 @@ import { z } from 'zod';
 import matter from 'gray-matter';
 import { BaseTool } from './base.js';
 import type { UpdateFrontmatterResult, FrontmatterData } from '../types/obsidian.js';
+import { withFileLock } from '../utils/fileLock.js';
 
 /**
  * Input schema for update_frontmatter tool
@@ -55,6 +56,10 @@ export class UpdateFrontmatterTool extends BaseTool<UpdateFrontmatterInput, Upda
    * @returns Success status, updated frontmatter, and changed fields
    */
   protected async run(input: UpdateFrontmatterInput): Promise<UpdateFrontmatterResult> {
+    return withFileLock(input.path, () => this.apply(input));
+  }
+
+  private async apply(input: UpdateFrontmatterInput): Promise<UpdateFrontmatterResult> {
     this.logger.debug(`Updating frontmatter in note: ${input.path}`);
 
     // Read the file

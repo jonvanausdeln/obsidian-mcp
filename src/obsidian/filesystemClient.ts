@@ -5,6 +5,7 @@ import type { Config } from '../utils/config.js';
 import type { RetryManager } from '../utils/retry.js';
 import { categorizeError, createError } from './errorHandler.js';
 import { ObsidianErrorType } from '../types/obsidian.js';
+import { withFileLock } from '../utils/fileLock.js';
 import { parseDateISO, getDailyNotePath as getDefaultDailyNotePath } from '../utils/dateUtils.js';
 import type {
   ReadNoteResult,
@@ -106,6 +107,10 @@ export class FileSystemClient {
    * Append content to the end of a file
    */
   async appendFile(path: string, content: string, separator = '\n'): Promise<AppendNoteResult> {
+    return withFileLock(path, () => this.appendFileUnlocked(path, content, separator));
+  }
+
+  private async appendFileUnlocked(path: string, content: string, separator: string): Promise<AppendNoteResult> {
     this.logger.debug('Appending to file', { path, contentLength: content.length });
 
     const absolutePath = this.resolveVaultPath(path);

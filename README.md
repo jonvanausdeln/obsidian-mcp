@@ -19,12 +19,15 @@ This MCP server provides seamless Obsidian integration for AI assistants, enabli
 
 ## Features
 
-### 10 Tools
+### 14 Tools
 
 #### 📝 Note Operations
 - **read_note** - Read note contents and metadata (size, timestamps) • *Filesystem*
 - **write_note** - Create or overwrite notes with safety protection • *Filesystem*
 - **append_note** - Append content with optional timestamps • *Filesystem*
+- **edit_note** - Exact find-and-replace edits, all-or-nothing, without rewriting the note • *Filesystem*
+- **update_section** - Replace, append or prepend content under a heading (`Parent > Child` supported) • *Filesystem*
+- **delete_note** - Delete a note (requires `confirm: true`, can be disabled with `ENABLE_DELETE=false`) • *Filesystem*
 - **update_frontmatter** - Add, update, or remove YAML frontmatter fields • *Filesystem*
 - **apply_template** - Apply templates with variable substitution • *Filesystem*
 
@@ -36,6 +39,9 @@ This MCP server provides seamless Obsidian integration for AI assistants, enabli
 #### 📅 Daily Notes
 - **get_daily_note** - Get or locate daily notes with automatic path detection • *Hybrid (API + Filesystem)*
 - **append_to_daily** - Quick append to today's daily note with timestamps • *Hybrid (API + Filesystem)*
+
+#### 🖥️ Obsidian App
+- **get_active_file** - Get the note currently open in Obsidian • *API only*
 
 > **Legend:**
 > - *Filesystem* - Works in both filesystem-only and hybrid modes (no API required)
