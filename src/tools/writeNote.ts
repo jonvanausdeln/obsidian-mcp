@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseTool } from './base.js';
+import { BaseTool, type ToolAnnotations } from './base.js';
 import type { WriteNoteResult } from '../types/obsidian.js';
 
 /**
@@ -48,6 +48,7 @@ export class WriteNoteTool extends BaseTool<WriteNoteInput, WriteNoteResult> {
     'Create or overwrite a note in the Obsidian vault. By default, will not overwrite existing files for safety. ' +
     'Automatically creates parent directories. Returns success status and whether the file was newly created.';
   protected readonly inputSchema = WriteNoteInputSchema;
+  readonly annotations: ToolAnnotations = { title: 'Write note', readOnlyHint: false, destructiveHint: true, idempotentHint: true };
 
   /**
    * Execute the write operation

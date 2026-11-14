@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import matter from 'gray-matter';
-import { BaseTool } from './base.js';
+import { BaseTool, type ToolAnnotations } from './base.js';
 import type { GetTagsResult, TagInfo } from '../types/obsidian.js';
 import { readdir } from 'fs/promises';
 import { join, relative } from 'path';
+import { parseNote } from '../utils/tags.js';
 
 /**
  * Input schema for get_tags tool
@@ -43,6 +43,7 @@ export class GetTagsTool extends BaseTool<GetTagsInput, GetTagsResult> {
   readonly name = 'get_tags';
   readonly description = 'Extract and list all tags from notes in the vault. Supports frontmatter tags and inline #tags.';
   protected readonly inputSchema = GetTagsInputSchema;
+  readonly annotations: ToolAnnotations = { title: 'Get tags', readOnlyHint: true };
 
   /**
    * Execute the tag extraction operation
@@ -158,64 +159,15 @@ export class GetTagsTool extends BaseTool<GetTagsInput, GetTagsResult> {
    * @returns Set of unique tags found in the file
    */
   private async extractTagsFromFile(absolutePath: string): Promise<Set<string>> {
-    const tags = new Set<string>();
-
     try {
-      // Read file content directly from filesystem
       const vaultPath = this.client['config'].vaultPath;
       const relativePath = relative(vaultPath, absolutePath);
       const { content } = await this.client.readFile(relativePath);
-
-      // Parse frontmatter
-      const parsed = matter(content);
-
-      // Extract frontmatter tags
-      if (parsed.data && parsed.data.tags) {
-        const frontmatterTags = this.normalizeTags(parsed.data.tags);
-        frontmatterTags.forEach((tag) => tags.add(tag));
-      }
-
-      // Extract inline tags from content
-      // Match #tag or #nested/tag/format
-      // Negative lookbehind to avoid matching URLs like http://example.com
-      const inlineTagRegex = /(?<![\w/])#([\w/-]+)/g;
-      const matches = parsed.content.matchAll(inlineTagRegex);
-
-      for (const match of matches) {
-        const tag = match[1];
-        if (!tag) continue; // Skip if no capture group
-
-        // Skip if it's a pure number (e.g., #123)
-        if (/^\d+$/.test(tag)) {
-          continue;
-        }
-        tags.add(tag);
-      }
+      return parseNote(content).tags;
     } catch (error) {
       // Log but don't fail - skip files that can't be read
       this.logger.warn(`Failed to extract tags from ${absolutePath}: ${error}`);
+      return new Set();
     }
-
-    return tags;
-  }
-
-  /**
-   * Normalize tags from frontmatter (can be string, array, or nested)
-   *
-   * @param tags - Tag value from frontmatter
-   * @returns Array of normalized tag strings
-   */
-  private normalizeTags(tags: unknown): string[] {
-    if (typeof tags === 'string') {
-      return [tags];
-    }
-
-    if (Array.isArray(tags)) {
-      return tags
-        .filter((tag) => typeof tag === 'string')
-        .map((tag) => tag.trim());
-    }
-
-    return [];
   }
 }

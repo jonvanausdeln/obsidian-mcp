@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseTool } from './base.js';
+import { BaseTool, type ToolAnnotations } from './base.js';
 import type { DeleteNoteResult } from '../types/obsidian.js';
 
 const DeleteNoteInputSchema = z.object({
@@ -24,6 +24,7 @@ export class DeleteNoteTool extends BaseTool<DeleteNoteInput, DeleteNoteResult> 
     'Delete a note from the Obsidian vault. Requires confirm: true as a safety guard. ' +
     'Can be disabled entirely via ENABLE_DELETE=false environment variable.';
   protected readonly inputSchema = DeleteNoteInputSchema;
+  readonly annotations: ToolAnnotations = { title: 'Delete note', readOnlyHint: false, destructiveHint: true, idempotentHint: true };
 
   protected async run(input: DeleteNoteInput): Promise<DeleteNoteResult> {
     this.logger.debug(`Deleting note: ${input.path}`);

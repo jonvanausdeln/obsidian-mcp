@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseTool } from './base.js';
+import { BaseTool, type ToolAnnotations } from './base.js';
 import { createError } from '../obsidian/errorHandler.js';
 import { ObsidianErrorType } from '../types/obsidian.js';
 import type { UpdateSectionResult } from '../types/obsidian.js';
@@ -69,6 +69,7 @@ export class UpdateSectionTool extends BaseTool<UpdateSectionInput, UpdateSectio
     'set includeSubsections to cover the whole section. Use "Parent > Child" or "## Heading" to disambiguate. ' +
     'Good for updating a "## Tasks" or "## Produce" list without rewriting the note.';
   protected readonly inputSchema = UpdateSectionInputSchema;
+  readonly annotations: ToolAnnotations = { title: 'Update section', readOnlyHint: false, destructiveHint: true, idempotentHint: false };
 
   protected async run(input: UpdateSectionInput): Promise<UpdateSectionResult> {
     return withFileLock(input.path, () => this.apply(input));

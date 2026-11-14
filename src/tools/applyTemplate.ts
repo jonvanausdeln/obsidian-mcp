@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseTool } from './base.js';
+import { BaseTool, type ToolAnnotations } from './base.js';
 import type { ApplyTemplateResult } from '../types/obsidian.js';
 import { getTodayISO, formatDateLong, getCurrentTime } from '../utils/dateUtils.js';
 
@@ -51,6 +51,7 @@ export class ApplyTemplateTool extends BaseTool<ApplyTemplateInput, ApplyTemplat
   readonly name = 'apply_template';
   readonly description = 'Apply a template to a note with variable substitution. Supports {{variable}} syntax and built-in variables like {{date}}, {{time}}.';
   protected readonly inputSchema = ApplyTemplateInputSchema;
+  readonly annotations: ToolAnnotations = { title: 'Apply template', readOnlyHint: false, destructiveHint: true, idempotentHint: false };
 
   /**
    * Execute the template application operation

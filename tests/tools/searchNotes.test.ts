@@ -74,7 +74,11 @@ describe('SearchNotesTool', () => {
       expect(mcpTool.inputSchema.properties).toHaveProperty('query');
       expect(mcpTool.inputSchema.properties).toHaveProperty('caseSensitive');
       expect(mcpTool.inputSchema.properties).toHaveProperty('useRegex');
-      expect(mcpTool.inputSchema.required).toContain('query');
+      expect(mcpTool.inputSchema.properties).toHaveProperty('tags');
+      expect(mcpTool.inputSchema.properties).toHaveProperty('frontmatter');
+      // query is optional: tags/frontmatter alone are a valid search
+      expect(mcpTool.inputSchema.required ?? []).not.toContain('query');
+      expect(mcpTool.annotations).toMatchObject({ readOnlyHint: true, openWorldHint: false });
     });
   });
 

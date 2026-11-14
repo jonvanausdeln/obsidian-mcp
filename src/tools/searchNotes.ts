@@ -1,195 +1,178 @@
 import { z } from 'zod';
-import { BaseTool } from './base.js';
+import { BaseTool, type ToolAnnotations } from './base.js';
 import type { SearchNotesResult, SearchMatch } from '../types/obsidian.js';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { ListNotesTool } from './listNotes.js';
+import { createError } from '../obsidian/errorHandler.js';
+import { ObsidianErrorType } from '../types/obsidian.js';
+import { frontmatterMatches, noteHasTags, parseNote } from '../utils/tags.js';
 
 /**
  * Input schema for search_notes tool
  */
-const SearchNotesInputSchema = z.object({
-  query: z.string().min(1, 'Query is required'),
-  folder: z.string().optional(),
-  caseSensitive: z.boolean().optional().default(false),
-  useRegex: z.boolean().optional().default(false),
-  includeContent: z.boolean().optional().default(true),
-  contextLines: z.number().int().min(0).optional().default(2),
-  limit: z.number().int().positive().optional(),
-});
+const SearchNotesInputSchema = z
+  .object({
+    query: z
+      .string()
+      .optional()
+      .describe('Text (or regex with useRegex) to find. Omit to just filter notes by tags/frontmatter.'),
+    folder: z.string().optional(),
+    tags: z
+      .array(z.string().min(1))
+      .optional()
+      .describe('Only notes with these tags (frontmatter or inline). "recipe" also matches "recipe/dinner".'),
+    tagMatch: z.enum(['all', 'any']).optional().default('all'),
+    frontmatter: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .describe(
+        'Only notes whose frontmatter matches, e.g. {"status": "draft"}. Strings compare case-insensitively; ' +
+          'list fields match if they contain the value; an array value requires all items; null means the key is absent.'
+      ),
+    caseSensitive: z.boolean().optional().default(false),
+    useRegex: z.boolean().optional().default(false),
+    includeContent: z.boolean().optional().default(true),
+    contextLines: z.number().int().min(0).optional().default(1),
+    includeFrontmatter: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Include each matching note\'s frontmatter in the results'),
+    limit: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .default(50)
+      .describe('Max matching lines to return (or max notes when no query). Default 50; check truncated.'),
+  })
+  .refine((v) => (v.query !== undefined && v.query.length > 0) || v.tags?.length || v.frontmatter, {
+    message: 'Provide a query, tags, or frontmatter filter',
+    path: ['query'],
+  });
 
 type SearchNotesInput = z.output<typeof SearchNotesInputSchema>;
+type ResultEntry = SearchNotesResult['results'][number];
 
 /**
- * SearchNotesTool - Full-text search across notes in the Obsidian vault
+ * SearchNotesTool - Full-text and metadata search across notes
  *
- * This tool provides comprehensive text search capabilities with support
- * for regular expressions, case sensitivity, and context line extraction.
- *
- * Features:
- * - Full-text search across all notes or specific folder
- * - Case-sensitive or case-insensitive search
- * - Regular expression pattern matching
- * - Extract context lines around matches
- * - Limit number of results
- * - Return match locations (line numbers)
- *
- * Example usage:
- * ```json
- * {
- *   "query": "TODO",
- *   "folder": "Work",
- *   "caseSensitive": false,
- *   "includeContent": true,
- *   "contextLines": 2,
- *   "limit": 10
- * }
- * ```
+ * - Text or regex search with line numbers and context
+ * - Filter by tags (frontmatter + inline, nested-tag aware) and frontmatter fields
+ * - Filter-only mode (no query) returns matching notes
  */
 export class SearchNotesTool extends BaseTool<SearchNotesInput, SearchNotesResult> {
   readonly name = 'search_notes';
   readonly description =
-    'Search for text across notes in the Obsidian vault. Supports case-sensitive/insensitive search, ' +
-    'regular expressions, context line extraction, and filtering by folder. Returns matches with line numbers and surrounding context.';
+    'Search notes by text and/or metadata. Text search supports regex, case sensitivity and context lines. ' +
+    'Filter by tags (frontmatter or inline; parent tags match nested ones) and frontmatter fields, e.g. ' +
+    '{tags: ["recipe"], frontmatter: {course: "dinner"}, query: "chicken"}. Omit query to just list notes matching the ' +
+    'filters. Results are capped by limit (default 50); truncated tells you if more exist.';
   protected readonly inputSchema = SearchNotesInputSchema;
+  readonly annotations: ToolAnnotations = { title: 'Search notes', readOnlyHint: true };
 
-  /**
-   * Execute the search operation
-   *
-   * @param input - Validated input with search query and options
-   * @returns Search results with matches and context
-   */
   protected async run(input: SearchNotesInput): Promise<SearchNotesResult> {
-    this.logger.debug('Searching notes', {
-      query: input.query,
-      folder: input.folder,
-      caseSensitive: input.caseSensitive,
-      useRegex: input.useRegex,
-      limit: input.limit,
-    });
-
-    // Get list of notes to search
-    const listTool = new ListNotesTool(this.client, this.logger);
-    const listResult = await listTool.execute({
+    const listResult = await new ListNotesTool(this.client, this.logger).execute({
       folder: input.folder,
       recursive: true,
+      limit: Number.MAX_SAFE_INTEGER,
     });
 
-    this.logger.debug(`Searching ${listResult.notes.length} notes`);
-
-    // Prepare search pattern
-    let searchPattern: RegExp;
-    try {
-      if (input.useRegex) {
-        searchPattern = new RegExp(input.query, input.caseSensitive ? 'g' : 'gi');
-      } else {
-        // Escape special regex characters for literal search
-        const escaped = input.query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        searchPattern = new RegExp(escaped, input.caseSensitive ? 'g' : 'gi');
-      }
-    } catch (error) {
-      // Invalid regex pattern
-      const { createError } = await import('../obsidian/errorHandler.js');
-      const { ObsidianErrorType } = await import('../types/obsidian.js');
-      throw createError(
-        ObsidianErrorType.PARSE_ERROR,
-        `Invalid regular expression pattern: ${input.query}`,
-        {
-          suggestedAction: 'Check the regex syntax. Set useRegex: false for literal text search.',
-          originalError: error,
-        }
-      );
-    }
-
-    // Search each note
-    const results: Array<{ path: string; matches: SearchMatch[] }> = [];
+    const pattern = input.query ? this.buildPattern(input) : null;
+    const filtering = Boolean(input.tags?.length || input.frontmatter);
     const vaultPath = this.client['config'].vaultPath;
 
+    const results: ResultEntry[] = [];
+    let totalMatches = 0;
+    let returned = 0;
+    let matchedFiles = 0;
+    let truncated = false;
+
     for (const note of listResult.notes) {
+      let content: string;
       try {
-        const fullPath = join(vaultPath, note.path);
-        const content = await readFile(fullPath, 'utf-8');
-        const lines = content.split('\n');
-
-        const noteMatches: SearchMatch[] = [];
-
-        // Search each line
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          if (!line) continue; // Skip undefined lines
-
-          if (searchPattern.test(line)) {
-            const match: SearchMatch = {
-              path: note.path,
-              line: i + 1, // 1-based line numbers
-              content: input.includeContent ? line : '',
-            };
-
-            // Add context lines if requested
-            if (input.includeContent && input.contextLines > 0) {
-              const beforeStart = Math.max(0, i - input.contextLines);
-              const afterEnd = Math.min(lines.length - 1, i + input.contextLines);
-
-              match.context = {
-                before: lines.slice(beforeStart, i),
-                after: lines.slice(i + 1, afterEnd + 1),
-              };
-            }
-
-            noteMatches.push(match);
-
-            // Reset regex lastIndex to avoid skipping matches
-            searchPattern.lastIndex = 0;
-          }
-        }
-
-        if (noteMatches.length > 0) {
-          results.push({
-            path: note.path,
-            matches: noteMatches,
-          });
-        }
+        content = await readFile(join(vaultPath, note.path), 'utf-8');
       } catch (error) {
-        // Skip notes that can't be read (permissions, encoding issues, etc.)
         this.logger.warn(`Failed to search note: ${note.path}`, { error });
         continue;
       }
+
+      let frontmatter: Record<string, unknown> | undefined;
+      if (filtering || input.includeFrontmatter) {
+        const parsed = parseNote(content);
+        if (input.tags?.length && !noteHasTags(parsed.tags, input.tags, input.tagMatch)) continue;
+        if (input.frontmatter && !frontmatterMatches(parsed.frontmatter, input.frontmatter)) continue;
+        frontmatter = parsed.frontmatter;
+      }
+      matchedFiles++;
+
+      const entry: ResultEntry = { path: note.path, matches: [], matchCount: 0 };
+      if (input.includeFrontmatter && frontmatter) entry.frontmatter = frontmatter;
+
+      if (!pattern) {
+        // Filter-only mode: limit counts notes
+        totalMatches++;
+        if (returned < input.limit) {
+          results.push(entry);
+          returned++;
+        } else {
+          truncated = true;
+        }
+        continue;
+      }
+
+      const lines = content.split(/\r?\n/);
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]!;
+        if (!pattern.test(line)) continue;
+
+        entry.matchCount++;
+        totalMatches++;
+        if (returned >= input.limit) {
+          truncated = true;
+          continue;
+        }
+
+        const match: SearchMatch = { line: i + 1, content: input.includeContent ? line : '' };
+        if (input.includeContent && input.contextLines > 0) {
+          match.context = {
+            before: lines.slice(Math.max(0, i - input.contextLines), i),
+            after: lines.slice(i + 1, i + 1 + input.contextLines),
+          };
+        }
+        entry.matches.push(match);
+        returned++;
+      }
+
+      if (entry.matches.length > 0) {
+        // matchCount reports what was returned for this note; totalMatches has the full count
+        entry.matchCount = entry.matches.length;
+        results.push(entry);
+      }
     }
 
-    // Flatten matches and apply limit
-    const allMatches = results.flatMap((r) => r.matches);
-    const limitedMatches = input.limit ? allMatches.slice(0, input.limit) : allMatches;
-
-    this.logger.debug(
-      `Found ${allMatches.length} matches in ${results.length} notes (returned ${limitedMatches.length})`
-    );
+    this.logger.debug(`search_notes: ${totalMatches} matches in ${matchedFiles} notes (returned ${returned})`);
 
     return {
-      results: this.groupMatchesByFile(limitedMatches),
-      totalMatches: allMatches.length,
+      results,
+      totalMatches,
       searchedFiles: listResult.notes.length,
+      ...(filtering ? { matchedFiles } : {}),
+      truncated,
     };
   }
 
-  /**
-   * Group matches by file path
-   */
-  private groupMatchesByFile(
-    matches: SearchMatch[]
-  ): Array<{ path: string; matches: SearchMatch[]; matchCount: number }> {
-    const grouped = new Map<string, SearchMatch[]>();
-
-    for (const match of matches) {
-      if (!grouped.has(match.path)) {
-        grouped.set(match.path, []);
-      }
-      grouped.get(match.path)!.push(match);
+  private buildPattern(input: SearchNotesInput): RegExp {
+    const flags = input.caseSensitive ? '' : 'i';
+    try {
+      const source = input.useRegex ? input.query! : input.query!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(source, flags);
+    } catch (error) {
+      throw createError(ObsidianErrorType.PARSE_ERROR, `Invalid regular expression pattern: ${input.query}`, {
+        suggestedAction: 'Check the regex syntax. Set useRegex: false for literal text search.',
+        originalError: error,
+      });
     }
-
-    return Array.from(grouped.entries()).map(([path, matches]) => ({
-      path,
-      matches,
-      matchCount: matches.length,
-    }));
   }
 }

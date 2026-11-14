@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseTool } from './base.js';
+import { BaseTool, type ToolAnnotations } from './base.js';
 import { normalizeDateParam } from '../utils/dateUtils.js';
 import type { AppendToDailyResult } from '../types/obsidian.js';
 
@@ -67,6 +67,7 @@ export class AppendToDailyTool extends BaseTool<AppendToDailyInput, AppendToDail
   readonly description =
     'Append content to a daily note. Optionally adds timestamp prefix. Creates note if missing. Uses API-first approach with filesystem fallback for plugin integration. Date format: YYYY-MM-DD (defaults to today).';
   protected readonly inputSchema = AppendToDailyInputSchema;
+  readonly annotations: ToolAnnotations = { title: 'Append to daily note', readOnlyHint: false, destructiveHint: false, idempotentHint: false };
 
   /**
    * Execute the append to daily operation

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseTool } from './base.js';
+import { BaseTool, type ToolAnnotations } from './base.js';
 import { normalizeDateParam } from '../utils/dateUtils.js';
 import type { GetDailyNoteResult } from '../types/obsidian.js';
 
@@ -45,6 +45,7 @@ export class GetDailyNoteTool extends BaseTool<GetDailyNoteInput, GetDailyNoteRe
   readonly description =
     'Get or locate the daily note for a specific date. Returns the note path, whether it exists, and its content. Uses API-first approach with filesystem fallback. Date format: YYYY-MM-DD (defaults to today).';
   protected readonly inputSchema = GetDailyNoteInputSchema;
+  readonly annotations: ToolAnnotations = { title: 'Get daily note', readOnlyHint: true };
 
   /**
    * Execute the get daily note operation

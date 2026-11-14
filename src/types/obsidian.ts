@@ -68,7 +68,8 @@ export interface NoteMetadata {
  * Search match result
  */
 export interface SearchMatch {
-  path: string;
+  /** Omitted in search_notes results, where matches are already grouped by path */
+  path?: string;
   line: number;
   content: string;
   context?: {
@@ -144,6 +145,8 @@ export interface ListNotesResult {
   notes: NoteMetadata[];
   total: number;
   filtered: number;
+  /** More notes exist beyond offset + limit */
+  hasMore: boolean;
 }
 
 /**
@@ -154,9 +157,14 @@ export interface SearchNotesResult {
     path: string;
     matches: SearchMatch[];
     matchCount: number;
+    frontmatter?: Record<string, unknown>;
   }>;
   totalMatches: number;
   searchedFiles: number;
+  /** Notes that passed the tag/frontmatter filters (equals searchedFiles when no filters) */
+  matchedFiles?: number;
+  /** Results were cut off by limit */
+  truncated: boolean;
 }
 
 /**

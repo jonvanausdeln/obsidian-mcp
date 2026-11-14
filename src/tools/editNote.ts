@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseTool } from './base.js';
+import { BaseTool, type ToolAnnotations } from './base.js';
 import { createError } from '../obsidian/errorHandler.js';
 import { ObsidianErrorType } from '../types/obsidian.js';
 import type { EditNoteResult } from '../types/obsidian.js';
@@ -51,6 +51,7 @@ export class EditNoteTool extends BaseTool<EditNoteInput, EditNoteResult> {
     'make it unique) unless replaceAll is true. Edits apply in order and are all-or-nothing: if any edit fails, ' +
     'the note is unchanged. Prefer this over write_note for small changes like checking off a list item.';
   protected readonly inputSchema = EditNoteInputSchema;
+  readonly annotations: ToolAnnotations = { title: 'Edit note', readOnlyHint: false, destructiveHint: true, idempotentHint: false };
 
   protected async run(input: EditNoteInput): Promise<EditNoteResult> {
     return withFileLock(input.path, () => this.apply(input));

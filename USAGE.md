@@ -416,10 +416,13 @@ Claude: [Uses list_notes tool to show files]
 
 #### Note Operations
 
-**`read_note`** - Read a note's content
+**`read_note`** - Read a note, one section of it, or its outline
 ```typescript
 { path: "Daily/2025-01-15.md" }
+{ path: "Writing/Chapter 3.md", outline: true, includeContent: false }   // headings only
+{ path: "Writing/Chapter 3.md", heading: "Scene 2" }                     // just that section
 ```
+`heading` uses the same selector syntax as `update_section` (`## Scene 2`, `Act 1 > Scene 2`, `occurrence`). Sub-headings are included unless `includeSubsections: false`.
 
 **`write_note`** - Create or overwrite a note
 ```typescript
@@ -462,11 +465,17 @@ Built-in variables: `{{date}}`, `{{time}}`, `{{date-long}}`
 ```typescript
 { folder: "Daily/", recursive: true, pattern: "2025-*.md", sortBy: "modified", order: "desc", limit: 50 }
 ```
+Returns at most 200 notes by default; `hasMore` says whether to page with `offset`.
 
-**`search_notes`** - Full-text search note content
+**`search_notes`** - Search by text, tags and frontmatter
 ```typescript
 { query: "project ideas", caseSensitive: false, useRegex: false, folder: "Projects/", contextLines: 2, limit: 50 }
+{ tags: ["recipe"], frontmatter: { course: "dinner" }, query: "chicken" }
+{ frontmatter: { status: "draft" }, includeFrontmatter: true }          // no query: list matching notes
 ```
+- `tags` match frontmatter and inline tags, case-insensitively; `recipe` also matches `recipe/dinner`. `tagMatch: "any"` for OR.
+- `frontmatter` strings compare case-insensitively; list fields match if they contain the value; `null` means the key is absent.
+- Defaults: `contextLines: 1`, `limit: 50` matching lines (or notes, without a query). `truncated: true` means more exist.
 
 **`get_tags`** - Extract and analyze tags from vault
 ```typescript
@@ -732,12 +741,12 @@ For vaults with 1000+ notes:
 
 1. **Use specific paths** in searches:
    ```typescript
-   search_notes({ query: "term", path: "Projects/" })
+   search_notes({ query: "term", folder: "Projects/" })
    ```
 
 2. **Limit results**:
    ```typescript
-   search_notes({ query: "term", maxResults: 20 })
+   search_notes({ query: "term", limit: 20 })
    ```
 
 3. **Consider increasing file size limit** only if needed

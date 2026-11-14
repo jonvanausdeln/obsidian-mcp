@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseTool } from './base.js';
+import { BaseTool, type ToolAnnotations } from './base.js';
 import type { ListNotesResult, NoteMetadata } from '../types/obsidian.js';
 import { readdir, stat } from 'fs/promises';
 import { join, relative } from 'path';
@@ -15,7 +15,13 @@ const ListNotesInputSchema = z.object({
   sortBy: z.enum(['name', 'modified', 'created', 'size']).optional().default('name'),
   order: z.enum(['asc', 'desc']).optional().default('asc'),
   offset: z.number().int().min(0).optional(),
-  limit: z.number().int().positive().optional(),
+  limit: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .default(200)
+    .describe("Max notes to return (default 200). Use offset to page; hasMore tells you if there are more."),
   dateRange: z
     .object({
       start: z.string().optional(),
@@ -58,6 +64,7 @@ export class ListNotesTool extends BaseTool<ListNotesInput, ListNotesResult> {
     'List notes in the Obsidian vault with optional filtering, sorting, and pattern matching. ' +
     'Supports recursive listing, glob patterns, date range filtering, sorting, and pagination (offset + limit).';
   protected readonly inputSchema = ListNotesInputSchema;
+  readonly annotations: ToolAnnotations = { title: 'List notes', readOnlyHint: true };
 
   /**
    * Execute the list operation
@@ -98,12 +105,13 @@ export class ListNotesTool extends BaseTool<ListNotesInput, ListNotesResult> {
     // Apply offset and limit
     const offset = input.offset ?? 0;
     const sliced = offset > 0 ? sorted.slice(offset) : sorted;
-    const limited = input.limit ? sliced.slice(0, input.limit) : sliced;
+    const limited = sliced.slice(0, input.limit);
 
     return {
       notes: limited,
       total: notes.length,
       filtered: filtered.length,
+      hasMore: offset + limited.length < filtered.length,
     };
   }
 

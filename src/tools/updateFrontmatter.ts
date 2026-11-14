@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import matter from 'gray-matter';
-import { BaseTool } from './base.js';
+import { BaseTool, type ToolAnnotations } from './base.js';
 import type { UpdateFrontmatterResult, FrontmatterData } from '../types/obsidian.js';
 import { withFileLock } from '../utils/fileLock.js';
 
@@ -48,6 +48,7 @@ export class UpdateFrontmatterTool extends BaseTool<UpdateFrontmatterInput, Upda
   readonly name = 'update_frontmatter';
   readonly description = 'Update YAML frontmatter in a note. Can add/update fields, remove fields, and merge with or replace existing frontmatter.';
   protected readonly inputSchema = UpdateFrontmatterInputSchema;
+  readonly annotations: ToolAnnotations = { title: 'Update frontmatter', readOnlyHint: false, destructiveHint: true, idempotentHint: true };
 
   /**
    * Execute the frontmatter update operation

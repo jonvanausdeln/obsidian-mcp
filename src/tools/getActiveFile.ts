@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseTool } from './base.js';
+import { BaseTool, type ToolAnnotations } from './base.js';
 import type { ActiveFileInfo } from '../types/obsidian.js';
 
 const GetActiveFileInputSchema = z.object({}).strict();
@@ -23,6 +23,7 @@ export class GetActiveFileTool extends BaseTool<GetActiveFileInput, GetActiveFil
     'Get the currently active (open) file in Obsidian. ' +
     'Requires the Obsidian REST API plugin. Returns null if Obsidian is not running.';
   protected readonly inputSchema = GetActiveFileInputSchema;
+  readonly annotations: ToolAnnotations = { title: 'Get active file', readOnlyHint: true };
 
   protected async run(_input: GetActiveFileInput): Promise<GetActiveFileResult> {
     this.logger.debug('Getting active file');

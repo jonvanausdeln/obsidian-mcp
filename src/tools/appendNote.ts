@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BaseTool } from './base.js';
+import { BaseTool, type ToolAnnotations } from './base.js';
 import type { AppendNoteResult } from '../types/obsidian.js';
 
 /**
@@ -45,6 +45,7 @@ export class AppendNoteTool extends BaseTool<AppendNoteInput, AppendNoteResult> 
     'Optionally add a timestamp prefix. Note must already exist. ' +
     'Returns the new length of the file in bytes.';
   protected readonly inputSchema = AppendNoteInputSchema;
+  readonly annotations: ToolAnnotations = { title: 'Append to note', readOnlyHint: false, destructiveHint: false, idempotentHint: false };
 
   /**
    * Execute the append operation

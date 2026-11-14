@@ -7,9 +7,25 @@ import type { ObsidianError } from '../types/obsidian.js';
 /**
  * MCP Tool definition that will be returned to the client
  */
+/**
+ * MCP tool annotations (hints for clients deciding when to ask for approval)
+ */
+export interface ToolAnnotations {
+  title?: string;
+  /** Tool does not modify the vault */
+  readOnlyHint?: boolean;
+  /** Tool may overwrite or remove existing content (only meaningful when not read-only) */
+  destructiveHint?: boolean;
+  /** Repeating the call with the same arguments has no additional effect */
+  idempotentHint?: boolean;
+  /** Tool reaches outside the vault (always false here) */
+  openWorldHint?: boolean;
+}
+
 export interface MCPToolDefinition {
   name: string;
   description: string;
+  annotations?: ToolAnnotations;
   inputSchema: {
     type: string;
     properties?: Record<string, unknown>;
@@ -59,6 +75,12 @@ export abstract class BaseTool<TInput, TOutput> {
    * Uses any for input type to allow schemas with defaults/transforms
    */
   protected abstract readonly inputSchema: z.ZodType<TInput, any, any>;
+
+  /**
+   * MCP annotations. Every tool must declare at least readOnlyHint so clients
+   * (and unattended runs) can tell reads from writes.
+   */
+  abstract readonly annotations: ToolAnnotations;
 
   /**
    * Constructor
@@ -159,6 +181,7 @@ export abstract class BaseTool<TInput, TOutput> {
     return {
       name: this.name,
       description: this.description,
+      annotations: { openWorldHint: false, ...this.annotations },
       inputSchema: schema as MCPToolDefinition['inputSchema'],
     };
   }

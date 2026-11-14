@@ -22,7 +22,7 @@ This MCP server provides seamless Obsidian integration for AI assistants, enabli
 ### 14 Tools
 
 #### 📝 Note Operations
-- **read_note** - Read note contents and metadata (size, timestamps) • *Filesystem*
+- **read_note** - Read a note, a single section, or just its outline • *Filesystem*
 - **write_note** - Create or overwrite notes with safety protection • *Filesystem*
 - **append_note** - Append content with optional timestamps • *Filesystem*
 - **edit_note** - Exact find-and-replace edits, all-or-nothing, without rewriting the note • *Filesystem*
@@ -32,8 +32,8 @@ This MCP server provides seamless Obsidian integration for AI assistants, enabli
 - **apply_template** - Apply templates with variable substitution • *Filesystem*
 
 #### 🔍 Search & Discovery
-- **list_notes** - List notes with glob patterns, sorting, and date filtering • *Filesystem*
-- **search_notes** - Full-text search with regex and context lines • *Filesystem*
+- **list_notes** - List notes with glob patterns, sorting, date filtering and paging • *Filesystem*
+- **search_notes** - Text/regex search plus tag and frontmatter filters (works without a query) • *Filesystem*
 - **get_tags** - Extract and analyze tags from frontmatter and inline #tags • *Filesystem*
 
 #### 📅 Daily Notes
