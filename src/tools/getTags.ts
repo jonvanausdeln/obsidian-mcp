@@ -74,7 +74,7 @@ export class GetTagsTool extends BaseTool<GetTagsInput, GetTagsResult> {
 
       if (fileTags.size > 0) {
         // Use relative path from vault
-        const relativePath = relative(vaultPath, notePath);
+        const relativePath = relative(vaultPath, notePath).replace(/\\/g, '/'); // same style as list_notes/search_notes
         filesWithTags.add(relativePath);
 
         // Add each tag to the map

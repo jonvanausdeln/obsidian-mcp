@@ -17,6 +17,7 @@ import { UpdateSectionTool } from '../../src/tools/updateSection.js';
 import { EditNoteTool } from '../../src/tools/editNote.js';
 import { WriteNoteTool } from '../../src/tools/writeNote.js';
 import { ApplyTemplateTool } from '../../src/tools/applyTemplate.js';
+import { GetTagsTool } from '../../src/tools/getTags.js';
 import { ObsidianErrorType } from '../../src/types/obsidian.js';
 
 let vault: string;
@@ -170,6 +171,14 @@ describe('locking', () => {
       new WriteNoteTool(client as never, logger).execute({ path: 'n.md', content: 'fresh\n', overwrite: true }),
     ]);
     expect(await read('n.md')).toBe('fresh\n');
+  });
+});
+
+describe('get_tags paths', () => {
+  it('returns forward-slash paths like the other tools', async () => {
+    await write('Recipes/Dinner/curry.md', '---\ntags: [recipe]\n---\nx');
+    const r = await new GetTagsTool(client as never, logger).execute({});
+    expect(r.tags.find((t) => t.tag === 'recipe')!.files).toEqual(['Recipes/Dinner/curry.md']);
   });
 });
 
