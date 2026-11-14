@@ -182,7 +182,7 @@ export class FileSystemClient {
   async listFiles(dirPath = '', recursive = false): Promise<FileInfo[]> {
     this.logger.debug('Listing files', { dirPath, recursive });
 
-    const absolutePath = dirPath ? this.resolveVaultPath(dirPath) : this.config.vaultPath;
+    const absolutePath = this.resolveSafePath(dirPath);
 
     try {
       const files: FileInfo[] = [];
@@ -333,8 +333,8 @@ export class FileSystemClient {
    * Validate path to prevent directory traversal attacks
    */
   private validatePath(relativePath: string, absolutePath: string): void {
-    // Check for parent directory references
-    if (relativePath.includes('..')) {
+    // Check for parent directory references (as a path segment, so names like "notes..md" are allowed)
+    if (relativePath.split(/[\\/]/).includes('..')) {
       throw createError(
         ObsidianErrorType.INVALID_PATH,
         'Path contains invalid parent directory reference (..)',
@@ -359,6 +359,20 @@ export class FileSystemClient {
         }
       );
     }
+  }
+
+  /**
+   * Resolve a vault-relative path (file or folder) to an absolute path,
+   * rejecting anything that escapes the vault. Empty/undefined resolves to the vault root.
+   * Tools that walk the filesystem directly must use this instead of path.join.
+   */
+  resolveSafePath(relativePath?: string): string {
+    if (!relativePath) {
+      return this.config.vaultPath;
+    }
+    const absolutePath = this.resolveVaultPath(relativePath);
+    this.validatePath(relativePath, absolutePath);
+    return absolutePath;
   }
 
   /**

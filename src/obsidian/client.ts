@@ -88,6 +88,13 @@ export class ObsidianClient {
   }
 
   /**
+   * Resolve a vault-relative path to an absolute path, rejecting vault escapes
+   */
+  resolveSafePath(relativePath?: string): string {
+    return this.filesystemClient.resolveSafePath(relativePath);
+  }
+
+  /**
    * Read a file (filesystem-only, most reliable)
    */
   async readFile(path: string): Promise<ReadNoteResult> {

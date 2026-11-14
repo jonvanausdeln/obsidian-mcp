@@ -78,6 +78,15 @@ describe('SearchNotesTool', () => {
     });
   });
 
+  describe('vault boundary', () => {
+    it('should reject a folder that escapes the vault', async () => {
+      // The test vault lives inside the repo; "../" would search the repo's README etc.
+      await expect(tool.execute({ query: 'obsidian', folder: '..' })).rejects.toMatchObject({
+        type: 'INVALID_PATH',
+      });
+    });
+  });
+
   describe('basic search', () => {
     it('should find text in single note', async () => {
       // Arrange

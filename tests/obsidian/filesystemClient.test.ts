@@ -386,6 +386,25 @@ describe('FileSystemClient', () => {
       });
     });
 
+    it('should allow ".." inside a filename (not a path segment)', async () => {
+      await fs.writeFile(join(testVaultPath, 'notes..md'), 'dots');
+      const result = await client.readFile('notes..md');
+      expect(result.content).toBe('dots');
+    });
+
+    it('should reject listFiles on a folder outside the vault', async () => {
+      await expect(client.listFiles('..', true)).rejects.toMatchObject({
+        type: ObsidianErrorType.INVALID_PATH,
+      });
+    });
+
+    it('resolveSafePath should return vault root for empty input and reject escapes', () => {
+      expect(client.resolveSafePath()).toBe(testVaultPath);
+      expect(client.resolveSafePath('')).toBe(testVaultPath);
+      expect(() => client.resolveSafePath('../x')).toThrow();
+      expect(() => client.resolveSafePath('a/../../x')).toThrow();
+    });
+
     it('should accept valid relative paths', async () => {
       // Arrange
       const testContent = '# Valid';

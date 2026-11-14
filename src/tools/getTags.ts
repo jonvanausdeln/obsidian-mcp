@@ -55,7 +55,7 @@ export class GetTagsTool extends BaseTool<GetTagsInput, GetTagsResult> {
 
     // Get the vault path
     const vaultPath = this.client['config'].vaultPath;
-    const targetFolder = input.path ? join(vaultPath, input.path) : vaultPath;
+    const targetFolder = this.client.resolveSafePath(input.path);
 
     // Map to track tags: tag -> set of file paths
     const tagMap = new Map<string, Set<string>>();

@@ -223,7 +223,7 @@ describe('BaseTool', () => {
 
       // Act & Assert
       await expect(tool.execute(input)).rejects.toMatchObject({
-        message: expect.stringContaining('String must contain at least 1 character'),
+        message: expect.stringMatching(/at least 1 character|>=1 characters/),
       });
     });
 

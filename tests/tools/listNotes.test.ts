@@ -159,6 +159,15 @@ describe('ListNotesTool', () => {
       // Act & Assert
       await expect(tool.execute({ folder: 'NonExistent' })).rejects.toThrow();
     });
+
+    it('should reject folders that escape the vault', async () => {
+      // The test vault lives inside the repo, so "../" would list the repo's own .md files
+      for (const folder of ['..', '../', 'Folder1/../..', '..\\']) {
+        await expect(tool.execute({ folder })).rejects.toMatchObject({
+          type: ObsidianErrorType.INVALID_PATH,
+        });
+      }
+    });
   });
 
   describe('recursive listing', () => {

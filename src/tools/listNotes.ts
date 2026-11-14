@@ -77,7 +77,7 @@ export class ListNotesTool extends BaseTool<ListNotesInput, ListNotesResult> {
 
     // Get the vault path
     const vaultPath = this.client['config'].vaultPath;
-    const targetFolder = input.folder ? join(vaultPath, input.folder) : vaultPath;
+    const targetFolder = this.client.resolveSafePath(input.folder);
 
     // Collect all matching notes
     const notes: NoteMetadata[] = [];

@@ -5,7 +5,7 @@ import type { DeleteNoteResult } from '../types/obsidian.js';
 const DeleteNoteInputSchema = z.object({
   path: z.string().min(1, 'Path is required'),
   confirm: z.literal(true, {
-    errorMap: () => ({ message: 'confirm must be true to delete a note. This is a safety guard to prevent accidental deletion.' }),
+    error: 'confirm must be true to delete a note. This is a safety guard to prevent accidental deletion.',
   }),
 });
 

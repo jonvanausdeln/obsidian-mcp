@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { Logger } from 'winston';
 import type { ObsidianClient } from '../obsidian/client.js';
 import { categorizeError } from '../obsidian/errorHandler.js';
@@ -120,8 +119,14 @@ export abstract class BaseTool<TInput, TOutput> {
       return this.inputSchema.parse(rawInput);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const messages = error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
-        this.logger.warn(`Input validation failed for ${this.name}`, { errors: error.errors });
+        const messages = error.issues
+          .map((e) => {
+            // Zod 4 reports a missing field as "expected X, received undefined"; say "Required" instead
+            const msg = e.code === 'invalid_type' && /received undefined$/.test(e.message) ? 'Required' : e.message;
+            return `${e.path.join('.')}: ${msg}`;
+          })
+          .join(', ');
+        this.logger.warn(`Input validation failed for ${this.name}`, { errors: error.issues });
         throw new Error(`Invalid input for ${this.name}: ${messages}`);
       }
       throw error;
@@ -145,15 +150,11 @@ export abstract class BaseTool<TInput, TOutput> {
    * @returns MCP-compatible tool definition
    */
   toMCPTool(): MCPToolDefinition {
-    const jsonSchema = zodToJsonSchema(this.inputSchema, {
-      name: `${this.name}_input`,
-      $refStrategy: 'none', // Inline all schemas instead of using $ref
-    });
-
-    // Extract the schema properties (zodToJsonSchema wraps it)
-    const schema = 'definitions' in jsonSchema
-      ? jsonSchema.definitions?.[`${this.name}_input`] ?? jsonSchema
-      : jsonSchema;
+    // 'input' mode: fields with defaults are optional for the caller, not required
+    const { $schema: _ignored, ...schema } = z.toJSONSchema(this.inputSchema, {
+      io: 'input',
+      unrepresentable: 'any',
+    }) as Record<string, unknown>;
 
     return {
       name: this.name,

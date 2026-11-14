@@ -9,7 +9,7 @@ import { getTodayISO, formatDateLong, getCurrentTime } from '../utils/dateUtils.
 const ApplyTemplateInputSchema = z.object({
   path: z.string().min(1, 'Target path is required'),
   templatePath: z.string().min(1, 'Template path is required'),
-  variables: z.record(z.string()).optional(),
+  variables: z.record(z.string(), z.string()).optional(),
   position: z.enum(['replace', 'prepend', 'append']).default('replace'),
 });
 

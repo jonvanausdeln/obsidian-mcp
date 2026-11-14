@@ -8,7 +8,7 @@ import type { UpdateFrontmatterResult, FrontmatterData } from '../types/obsidian
  */
 const UpdateFrontmatterInputSchema = z.object({
   path: z.string().min(1, 'Path is required'),
-  updates: z.record(z.unknown()).default({}),
+  updates: z.record(z.string(), z.unknown()).default({}),
   remove: z.array(z.string()).optional(),
   merge: z.boolean().default(true),
 });
